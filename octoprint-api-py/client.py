@@ -611,7 +611,7 @@ class Client:
         if target < 0:
             raise ValueError("`target` must be zero or positive")
         data = {"command": "target", "target": target}
-        resp = self._make_request("/api/printer", json=data)
+        resp = self._make_request("/api/printer/bed", json=data)
 
     def bed_offset(self, offset: int):
         """
@@ -624,7 +624,7 @@ class Client:
             offset (int): Offset to set.
         """
         data = {"command": "offset", "offset": offset}
-        resp = self._make_request("/api/printer", json=data)
+        resp = self._make_request("/api/printer/bed", json=data)
 
     def bed(self, history: int = 0):
         """
@@ -647,5 +647,147 @@ class Client:
         resp = self._make_request("/api/printer/bed", params=data)
         return resp.json
 
-    # LEFT OFF AT CHAMBER COMMANDS
-    # https://docs.octoprint.org/en/main/api/printer.html#issue-a-chamber-command
+    def chamber_target(self, target: int):
+        """
+        Sets the given target temperature on the printer’s chamber.
+
+        - endpoint: `/api/printer/chamber`
+        - method: `POST`
+
+        params:
+            target (int): Target temperature to set. A value of 0 will turn 
+                the heater off.
+        """
+        if target < 0:
+            raise ValueError("`target` must be zero or positive")
+        data = {"command": "target", "target": target}
+        resp = self._make_request("/api/printer/chamber", json=data)
+
+    def chamber_offset(self, offset: int):
+        """
+        Sets the given temperature offset on the printer’s chamber.
+
+        - endpoint: `/api/printer/chamber`
+        - method: `POST`
+
+        params:
+            offset (int): Offset to set.
+        """
+        data = {"command": "offset", "offset": offset}
+        resp = self._make_request("/api/printer/chamber", json=data)
+
+    def chamber(self, history: int = 0):
+        """
+        Retrieves the current temperature data (actual, target and offset) 
+        plus optionally a (limited) history (actual, target, timestamp) for 
+        the printer’s heated chamber.
+
+        - endpoint: `/api/printer/chamber`
+        - method: `GET`
+
+        params:
+            history (int): number of temperature records to include
+        """
+        if history is None or history < 0:
+            raise ValueError("`history` must be positive int or zero")
+        data = {}
+        if history > 0:
+            data["history"] = True
+            data["limit"] = history
+        resp = self._make_request("/api/printer/chamber", params=data)
+        return resp.json
+
+    def sd_init(self):
+        """
+        Initializes the printer’s SD card, making it available for use. This 
+        also includes an initial retrieval of the list of files currently stored 
+        on the SD card, so after issuing that command a retrieval of the files 
+        on SD card will return a successful result.
+
+        - endpoint: `/api/printer/sd`
+        - method: `POST`
+        """
+        resp = self._make_request("/api/printer/sd", "POST", json={"command": "init"})
+
+    def sd_refresh(self):
+        """
+        Refreshes the list of files stored on the printer’s SD card. Will throw a 
+        409 Conflict if the card has not been initialized yet
+
+        - endpoint: `/api/printer/sd`
+        - method: `POST`
+        """
+        resp = self._make_request("/api/printer/sd", "POST", json={"command": "refresh"})
+
+    def sd_release(self):
+        """
+        Releases the SD card from the printer. The reverse operation to init. After 
+        issuing this command, the SD card won’t be available anymore, hence and 
+        operations targeting files stored on it will fail. Will throw a 409 Conflict 
+        if the card has not been initialized yet.
+
+        - endpoint: `/api/printer/sd`
+        - method: `POST`
+        """
+        resp = self._make_request("/api/printer/sd", "POST", json={"command": "release"})
+
+    def sd(self):
+        """
+        Retrieves the current state of the printer’s SD card.
+
+        - endpoint: `/api/printer/sd`
+        - method: `GET`
+        """
+        resp = self._make_request("/api/printer/sd")
+        return resp.json
+
+    def printer_error(self):
+        """
+        Retrieves information about the last error that occurred on the printer.
+
+        - endpoint: `/api/printer/error`
+        - method: `GET`
+        """
+        resp = self._make_request("/api/printer/error")
+        return resp.json
+
+    def printer_command(self, commands: list):
+        """
+        Sends any command to the printer via the serial interface. Should be used 
+        with some care as some commands can interfere with or even stop a running 
+        print job.
+
+        - endpoint: `/api/printer/command`
+        - method: `POST`
+
+        params:
+            commands (list): list of arbitrary commands as str's
+        """
+        commands = [str(c) for c in commands]
+        resp = self._make_request("/api/printer/command", "POST", json={"commands": commands})
+
+    def printer_controls(self):
+        """
+        Retrieves the custom controls as configured in config.yaml.
+
+        - endpoint: `/api/printer/command/custom`
+        - method: `GET`
+        """
+        resp = self._make_request("/api/printer/command/custom")
+        return resp.json
+
+    def profile(self, profile: str = None):
+        """
+        Retrieves an object representing all configured printer profiles. If not
+        `profile` argument is specified, defaults to all profiles.
+        
+        - endpoint: `/api/printerprofiles`
+        - method: `GET`
+        """
+        url = "/api/printerprofiles"
+        if profile: url += f"/{profile}"
+        resp = self._make_request(url)
+        return resp.json
+
+    # LEFT OFF AT ADD PRINTER PROFILE
+    # https://docs.octoprint.org/en/main/api/printerprofiles.html#add-a-new-printer-profile
